@@ -54,29 +54,53 @@ export function checkLocalStorage(value: string) {
     return value;
 }
 
-// parse headers and body to valid JSON
-export function parseToValidJson(input, type) {
+// format headers and body before parsing into JSON
+export function formatInput(input: string) : string | null {
     const trimmedInput = input.trim();
 
     if (!trimmedInput) {
         return null;
     }
 
-    try {
-        // Replace single quotes with double quotes and ensure keys/values are properly quoted
-        const formattedInput = trimmedInput
-            .replace(/"/g, "") // Remove all quotes
-            .replace(/'/g, '"') // Replace single quotes with double quotes
-            .replace(
-                /\s*([^,{"]+):\s*([^,"}]+)/g,
-                '"$1":"$2"',
-            ); // Add double quotes around unquoted keys and values
+    // Replace single quotes with double quotes and ensure keys/values are properly quoted
+    const formattedInput = trimmedInput
+        .replace(/"/g, "") // Remove all quotes
+        .replace(/'/g, '"') // Replace single quotes with double quotes
+        .replace(
+            /\s*([^,{"]+):\s*([^,"}]+)/g,
+            '"$1":"$2"',
+        ); // Add double quotes around unquoted keys and values
 
+    return formattedInput;
+}
+
+export function parseToValidJson(input : string, type : string) {
+
+    var formattedInput = formatInput(input);
+    if (!formattedInput) {
+        return null;
+    }
+
+    try {
         return JSON.parse(formattedInput);
     } catch (e) {
         throw new Error(
             `Invalid ${type} format. Details: ${e.message}`,
         );
+    }
+}
+
+export function tryParseToValidJson(input : string) {
+
+    var formattedInput = formatInput(input);
+    if (!formattedInput) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(formattedInput);
+    } catch (e) {
+        return formattedInput;
     }
 }
 
@@ -289,7 +313,7 @@ export default class MainAPIR extends Plugin {
                                 ) ?? "";
 
                             try {
-                                body = parseToValidJson(tempBody, "body");
+                                body = tryParseToValidJson(tempBody);
                             } catch (e) {
                                 el.createEl("strong", { text: e.message });
                                 return;
@@ -369,11 +393,11 @@ export default class MainAPIR extends Plugin {
                     if (show) {
                         // split show by `+` to check if user defined more than one path
                         show = show.split("+");
-                        
+
                         // check if the user defined more than one path
                         // if so, iterate over each path and get the data
-                        output = show.length > 1 
-                          ? show.map((path) => JSONPath({ path: path.trim(), json: responseData })) 
+                        output = show.length > 1
+                          ? show.map((path) => JSONPath({ path: path.trim(), json: responseData }))
                           : JSONPath({ path: show[0], json: responseData });
 
                         if (properties.length > 0 && properties[0] !== '') {
@@ -438,7 +462,7 @@ export default class MainAPIR extends Plugin {
                     } else {
                         el.createEl("pre", { text: formattedOutput });
                     }
-                    
+
                     // add a button to copy the output
                     addBtnCopy(el, formattedOutput);
 
